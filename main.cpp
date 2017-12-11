@@ -5,6 +5,8 @@ using namespace std;
 
 int main()
 {
+    cv::Mat im;
+
     cout << "Hello World!" << endl;
     return 0;
 }
