@@ -15,7 +15,7 @@ int main()
     if( !capture.isOpened() )
         throw "Error when reading steam_avi";
 
-    cv::Ptr<cv::FastFeatureDetector> fastfd = cv::FastFeatureDetector::create();
+    cv::Ptr<cv::ORB> orbfd = cv::ORB::create();
     std::vector<cv::KeyPoint> keypoints, lastKeypoints;
     cv::Mat descriptors, lastDescriptors;
     cv::Ptr<cv::BFMatcher> bfm = cv::BFMatcher::create();
@@ -31,25 +31,25 @@ int main()
     {
         capture >> frame;
 
-        cout << "Hello World!" << endl;
-        fastfd->detect(frame, keypoints);
-        cout << "Hello World!" << endl;
-        fastfd->compute(frame, keypoints, descriptors);
-        cout << "Hello World!" << endl;
-        lastKeypoints = keypoints;
-        bfm->match(descriptors, lastDescriptors, matches);
-        cout << "Hello World!" << endl;
-        lastDescriptors = descriptors;
+        orbfd->detect(frame, keypoints);
+        orbfd->compute(frame, keypoints, descriptors);
+        if (!lastDescriptors.empty()) {
+            bfm->match(descriptors, lastDescriptors, matches);
+        }
         std::sort(matches.begin(), matches.end(), matchCompare);
 
         if(frame.empty())
             break;
         cv::Mat kpframe;
-        //cv::drawKeypoints(frame, keypoints, kpframe);
-        cv::drawMatches(frame, keypoints, lastFrame, lastKeypoints, matches, kpframe);
+        if (!lastFrame.empty() && !matches.empty() && !lastDescriptors.empty())
+            cv::drawMatches(frame, keypoints, lastFrame, lastKeypoints, matches, kpframe);
+        else
+            cv::drawKeypoints(frame, keypoints, kpframe);
         lastFrame = frame;
+        lastKeypoints = keypoints;
+        lastDescriptors = descriptors;
         cv::imshow("w", kpframe);
-        cv::waitKey(20); // waits to display frame
+        cv::waitKey(2); // waits to display frame
     }
     cv::waitKey(0); // key press to close window
     // releases and window destroy are automatic in C++ interface
