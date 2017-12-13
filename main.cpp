@@ -7,7 +7,6 @@ using namespace std;
 
 int main()
 {
-    cv::Mat image;
     string filename = "/home/black/Video/Futurama.S05E14.mkv";
     cv::VideoCapture capture(filename);
     cv::Mat frame, lastFrame;
