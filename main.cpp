@@ -8,17 +8,23 @@ using namespace std;
 int main()
 {
     cv::Mat image;
-    cout << "Hello World!" << endl;
     string filename = "/home/black/Video/Futurama.S05E14.mkv";
     cv::VideoCapture capture(filename);
-    cout << "Hello World!" << endl;
-    cv::Mat frame;
+    cv::Mat frame, lastFrame;
 
     if( !capture.isOpened() )
         throw "Error when reading steam_avi";
 
     cv::Ptr<cv::FastFeatureDetector> fastfd = cv::FastFeatureDetector::create();
-    std::vector<cv::KeyPoint> keypoints;
+    std::vector<cv::KeyPoint> keypoints, lastKeypoints;
+    cv::Mat descriptors, lastDescriptors;
+    cv::Ptr<cv::BFMatcher> bfm = cv::BFMatcher::create();
+
+    std::vector<cv::DMatch> matches;
+
+    auto matchCompare = [](const cv::DMatch& match1, const cv::DMatch& match2) {
+        return match1.distance < match2.distance;
+    };
 
     cv::namedWindow( "w", 1);
     for( ; ; )
@@ -28,13 +34,20 @@ int main()
         cout << "Hello World!" << endl;
         fastfd->detect(frame, keypoints);
         cout << "Hello World!" << endl;
-        cv::Mat kpframe;
+        fastfd->compute(frame, keypoints, descriptors);
         cout << "Hello World!" << endl;
-        cv::drawKeypoints(frame, keypoints, kpframe);
+        lastKeypoints = keypoints;
+        bfm->match(descriptors, lastDescriptors, matches);
         cout << "Hello World!" << endl;
+        lastDescriptors = descriptors;
+        std::sort(matches.begin(), matches.end(), matchCompare);
 
-        if(kpframe.empty())
+        if(frame.empty())
             break;
+        cv::Mat kpframe;
+        //cv::drawKeypoints(frame, keypoints, kpframe);
+        cv::drawMatches(frame, keypoints, lastFrame, lastKeypoints, matches, kpframe);
+        lastFrame = frame;
         cv::imshow("w", kpframe);
         cv::waitKey(20); // waits to display frame
     }
