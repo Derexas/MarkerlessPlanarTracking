@@ -2,6 +2,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d.hpp>
+#include "opencv2/calib3d/calib3d.hpp"
 
 using namespace std;
 
@@ -22,28 +23,43 @@ int main()
     std::vector<cv::DMatch> matches;
 
     auto matchCompare = [](const cv::DMatch& match1, const cv::DMatch& match2) {
-        return match1.distance < match2.distance;
+        return cv::norm(keypoints[match1.queryIdx].pt.;
     };
 
     cv::namedWindow( "w", 1);
     for( ; ; )
     {
+        cv::Mat kpframe;
         capture >> frame;
 
         orbfd->detect(frame, keypoints);
         orbfd->compute(frame, keypoints, descriptors);
         if (!lastDescriptors.empty()) {
             bfm->match(descriptors, lastDescriptors, matches);
-        }
-        std::sort(matches.begin(), matches.end(), matchCompare);
+            if (!matches.empty()) {
+                std::vector<cv::Point2f> srcPoints, dstPoints;
+                for (auto m = matches.begin(); m != matches.end(); m++) {
+                    srcPoints.push_back(keypoints[m->queryIdx].pt);
+                    dstPoints.push_back(keypoints[m->trainIdx].pt);
+                }
+                cv::Mat homography = cv::findHomography(srcPoints, dstPoints, cv::RANSAC);
 
-        if(frame.empty())
-            break;
-        cv::Mat kpframe;
-        if (!lastFrame.empty() && !matches.empty() && !lastDescriptors.empty())
-            cv::drawMatches(frame, keypoints, lastFrame, lastKeypoints, matches, kpframe);
-        else
-            cv::drawKeypoints(frame, keypoints, kpframe);
+                std::sort(matches.begin(), matches.end(), matchCompare);
+
+                if(frame.empty())
+                    break;
+                if (!lastFrame.empty() && !matches.empty() && !lastDescriptors.empty()) {
+                    int size = matches.size();
+                    int n = std::min(20, size);
+                    std::vector<cv::DMatch>::const_iterator first = matches.begin();
+                    std::vector<cv::DMatch>::const_iterator last = matches.begin() + n;
+                    std::vector<cv::DMatch> nearestMatches(first, last);
+                    cv::drawMatches(frame, keypoints, lastFrame, lastKeypoints, nearestMatches, kpframe);
+                }
+            }
+        }
+        if (kpframe.empty())
+            kpframe = frame;//cv::drawKeypoints(frame, keypoints, kpframe);
         lastFrame = frame;
         lastKeypoints = keypoints;
         lastDescriptors = descriptors;
