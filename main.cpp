@@ -4,17 +4,52 @@
 #include <opencv2/features2d.hpp>
 
 using namespace std;
+using namespace cv;
+
+vector<Point> points;
+int nbclic = 0;
+
+
+
+void on_mouse(int e, int x, int y, int d, void *ptr)
+{
+	if (e == EVENT_LBUTTONDOWN)
+	{
+		nbclic++;
+		points.push_back(Point(x, y));
+
+		if (nbclic == 4) {
+
+			cv::setMouseCallback("Result", NULL, NULL);
+
+		}
+
+	}
+}
+
+
+
+
 
 int main()
 {
-    string filename = "/home/black/Video/Futurama.S05E14.mkv";
+
+	
+	
+
+	//setMouseCallback("Image Depart", on_mouse, NULL);
+
+
+
+    string filename = "/Users/leo-d/Desktop/videotest";
     cv::VideoCapture capture(filename);
     cv::Mat frame, lastFrame;
 
     if( !capture.isOpened() )
         throw "Error when reading steam_avi";
 
-    cv::Ptr<cv::ORB> orbfd = cv::ORB::create();
+	 cv::Ptr<cv::ORB> orbfd = cv::ORB::create();
+	 
     std::vector<cv::KeyPoint> keypoints, lastKeypoints;
     cv::Mat descriptors, lastDescriptors;
     cv::Ptr<cv::BFMatcher> bfm = cv::BFMatcher::create();
@@ -54,3 +89,10 @@ int main()
     // releases and window destroy are automatic in C++ interface
     return 0;
 }
+
+
+
+
+
+
+
