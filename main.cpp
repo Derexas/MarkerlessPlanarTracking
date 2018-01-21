@@ -61,51 +61,47 @@ void homographyImages() {
     cv::Mat frame1, frame2, kpframe;
 
     cv::Ptr<cv::ORB> orbfd = cv::ORB::create();
-    std::vector<cv::KeyPoint> keypoints, lastKeypoints;
-    cv::Mat descriptors, lastDescriptors;
     cv::Ptr<cv::BFMatcher> bfm = cv::BFMatcher::create(cv::NORM_HAMMING, true);
 
     std::vector<cv::DMatch> matches;
-    cout << "2" << endl;
 
     capture >> frame1;
     for (int i = 0; i < 20; i++) capture >> frame2;
-    cout << "3" << endl;
     std::vector<cv::KeyPoint> keypoints1, keypoints2;
     cv::Mat descriptors1, descriptors2;
     orbfd->detect(frame1, keypoints1);
     orbfd->compute(frame1, keypoints1, descriptors1);
-    orbfd->detect(frame2, keypoints2);
-    orbfd->compute(frame2, keypoints2, descriptors2);
-    cout << "4" << endl;
+    while (true) {
+        capture >> frame2;
+        orbfd->detect(frame2, keypoints2);
+        orbfd->compute(frame2, keypoints2, descriptors2);
 
-    bfm->match(descriptors1, descriptors2, matches);
-    cout << "5" << endl;
-    std::vector<cv::Point2d> srcPoints, dstPoints;
-    for (auto m = matches.begin(); m != matches.end(); m++) {
-        srcPoints.push_back(keypoints1[m->queryIdx].pt);
-        dstPoints.push_back(keypoints2[m->trainIdx].pt);
+        bfm->match(descriptors1, descriptors2, matches);
+        std::vector<cv::Point2d> srcPoints, dstPoints;
+        for (auto m = matches.begin(); m != matches.end(); m++) {
+            srcPoints.push_back(keypoints1[m->queryIdx].pt);
+            dstPoints.push_back(keypoints2[m->trainIdx].pt);
+        }
+
+        cv::Mat mask;
+        cv::Mat homography = cv::findHomography(srcPoints, dstPoints, mask, cv::RANSAC, 5.0);
+
+        cv::drawMatches(frame1, keypoints1, frame2, keypoints2, matches, kpframe);
+        kpframe = frame2;
+        //cv::warpPerspective(frame1, kpframe, homography, cv::Size(frame2.cols, frame2.rows));
+        vector<cv::Point3d> pp;
+        for (cv::Point2d p : imagePoints)
+            pp.push_back(cv::Point3d(p.x, p.y, 1));
+        cv::transform(pp, pp, homography);
+        for (cv::Point3d p : pp) {
+            cv::circle(kpframe, cv::Point(p.x/p.z, p.y/p.z), 5, cv::Scalar( 0, 0, 255 ));
+        }
+        cv::imshow("test", kpframe);
+        cv::waitKey(20);
     }
-    cout << "5" << endl;
-
-    cv::Mat mask;
-    cv::Mat homography = cv::findHomography(srcPoints, dstPoints, mask, cv::RANSAC, 5.0);
-
-    cv::drawMatches(frame1, keypoints1, frame2, keypoints2, matches, kpframe);
-    //kpframe = frame;
-    //cv::warpPerspective(frame1, kpframe, homography, cv::Size(frame2.cols, frame2.rows));
-    vector<cv::Point3d> pp;
-    for (cv::Point2d p : imagePoints)
-        pp.push_back(cv::Point3d(p.x, p.y, 1));
-    cv::transform(pp, pp, homography);
-    for (cv::Point3d p : pp) {
-        cv::circle(kpframe, cv::Point(p.x, p.y), 5, cv::Scalar( 0, 0, 255 ));
-    }
-    cv::imshow("test", kpframe);
-    cv::waitKey(0);
 }
 
-void homographyVideo() {
+void homographyVideoOld() {
     cv::VideoCapture capture(filename);
     cv::Mat frame, lastFrame;
 
@@ -141,15 +137,15 @@ void homographyVideo() {
         orbfd->detect(frame, keypoints);
         orbfd->compute(frame, keypoints, descriptors);
         if (!referenceDescriptors.empty()) {
-            bfm->match(descriptors, referenceDescriptors, matches);
+            bfm->match(referenceDescriptors, descriptors, matches);
             if (!matches.empty()) {
                 int size = matches.size();
-                int n = std::min(40, size);
+                int n = size;//std::min(40, size);
                 std::sort(matches.begin(), matches.end(), matchCompare);
 
                 std::vector<cv::Point2d> srcPoints, dstPoints;
                 for (auto m = matches.begin(); m != matches.begin()+n; m++) {
-                    srcPoints.push_back(keypoints[m->queryIdx].pt);
+                    srcPoints.push_back(referenceKeypoints[m->queryIdx].pt);
                     dstPoints.push_back(keypoints[m->trainIdx].pt);
                 }
 
@@ -175,14 +171,13 @@ void homographyVideo() {
                     cv::Scalar colors = cv::Scalar::all(-1);
                     cv::drawMatches(frame, keypoints, referenceFrame, referenceKeypoints, nearestMatches, kpframe, colors, colors, matchMask);
                     //kpframe = frame;
-                    //cv::warpPerspective(referenceFrame, kpframe, homography, cv::Size(kpframe.rows, kpframe.cols));
+                    cv::warpPerspective(referenceFrame, kpframe, homography, cv::Size(frame.cols, frame.rows));
                     vector<cv::Point3d> pp;
                     for (cv::Point2d p : imagePoints)
                         pp.push_back(cv::Point3d(p.x, p.y, 1));
                     cv::transform(pp, pp, homography);
                     for (cv::Point3d p : pp) {
                         cv::circle(kpframe, cv::Point(p.x, p.y), 5, cv::Scalar( 0, 0, 255 ));
-                        //cout << p << endl;
                     }
                 }
             }
